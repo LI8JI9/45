@@ -22,7 +22,6 @@
             color: #333;
             transition: all 0.3s ease;
         }
-        /* 搜索历史样式 */
         .history-section {
             margin-bottom: 20px;
         }
@@ -121,10 +120,70 @@
             font-weight: bold;
             color: #666;
         }
-        .audio-control {
+        /* 自定义音频控件样式 */
+        .audio-player {
             margin-bottom: 15px;
+            background-color: #fff;
+            border-radius: 8px;
+            padding: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
-        #downloadBtn {
+        .audio-controls {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .play-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .progress-container {
+            flex: 1;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background-color: #eee;
+            border-radius: 2px;
+            cursor: pointer;
+            position: relative;
+        }
+        .progress-fill {
+            height: 100%;
+            background-color: #007bff;
+            border-radius: 2px;
+            width: 0%;
+        }
+        .time-display {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+        .volume-control {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .volume-icon {
+            color: #666;
+        }
+        .volume-slider {
+            width: 60px;
+            height: 4px;
+            cursor: pointer;
+        }
+        .download-btn {
             padding: 8px 16px;
             background-color: #28a745;
             color: white;
@@ -133,7 +192,7 @@
             cursor: pointer;
             font-size: 14px;
         }
-        #downloadBtn:hover {
+        .download-btn:hover {
             background-color: #218838;
         }
     </style>
@@ -299,6 +358,17 @@
             });
         }
 
+        // 从URL中提取文件格式
+        function getFileFormatFromUrl(url) {
+            // 匹配URL中的文件扩展名（如.mp3, .flac等）
+            const match = url.match(/\.([a-zA-Z0-9]+)(\?|$)/);
+            if (match && match[1]) {
+                return match[1].toLowerCase();
+            }
+            // 默认返回mp3
+            return 'mp3';
+        }
+
         // 加载歌曲详情（预览、试听、下载）
         async function loadSongDetail(detailUrl, song, parentItem) {
             // 关闭所有其他预览面板并暂停播放
@@ -323,13 +393,108 @@
                 const previewPanel = createPreviewPanel(data, song);
                 parentItem.appendChild(previewPanel);
 
-                // 自动播放音频
-                const audio = previewPanel.querySelector('audio');
-                if (audio) audio.play().catch(err => console.error('自动播放失败：', err));
+                // 初始化自定义音频播放器
+                initAudioPlayer(previewPanel, data.url);
+
             } catch (error) {
                 console.error('加载详情错误：', error);
                 alert('网络错误，请重试');
             }
+        }
+
+        // 初始化自定义音频播放器
+        function initAudioPlayer(panel, audioUrl) {
+            const audio = new Audio(audioUrl);
+            const playBtn = panel.querySelector('.play-btn');
+            const progressBar = panel.querySelector('.progress-bar');
+            const progressFill = panel.querySelector('.progress-fill');
+            const currentTimeEl = panel.querySelector('.current-time');
+            const durationEl = panel.querySelector('.duration');
+            const volumeSlider = panel.querySelector('.volume-slider');
+            const volumeIcon = panel.querySelector('.volume-icon');
+
+            // 播放/暂停切换
+            playBtn.addEventListener('click', () => {
+                if (audio.paused) {
+                    audio.play().then(() => {
+                        playBtn.innerHTML = '⏸';
+                    }).catch(err => console.error('播放失败：', err));
+                } else {
+                    audio.pause();
+                    playBtn.innerHTML = '▶';
+                }
+            });
+
+            // 进度更新
+            audio.addEventListener('timeupdate', () => {
+                const percent = (audio.currentTime / audio.duration) * 100;
+                progressFill.style.width = `${percent}%`;
+                
+                // 更新时间显示
+                currentTimeEl.textContent = formatTime(audio.currentTime);
+                if (!isNaN(audio.duration)) {
+                    durationEl.textContent = formatTime(audio.duration);
+                }
+            });
+
+            // 加载完成获取时长
+            audio.addEventListener('loadedmetadata', () => {
+                durationEl.textContent = formatTime(audio.duration);
+            });
+
+            // 点击进度条跳转
+            progressBar.addEventListener('click', (e) => {
+                const rect = progressBar.getBoundingClientRect();
+                const pos = (e.clientX - rect.left) / rect.width;
+                audio.currentTime = pos * audio.duration;
+            });
+
+            // 音量控制
+            volumeSlider.addEventListener('input', () => {
+                audio.volume = volumeSlider.value;
+                updateVolumeIcon(audio.volume);
+            });
+
+            // 静音切换
+            volumeIcon.addEventListener('click', () => {
+                audio.muted = !audio.muted;
+                volumeIcon.textContent = audio.muted ? '🔇' : '🔊';
+            });
+
+            // 播放结束重置
+            audio.addEventListener('ended', () => {
+                playBtn.innerHTML = '▶';
+                progressFill.style.width = '0%';
+                audio.currentTime = 0;
+            });
+
+            // 更新音量图标
+            function updateVolumeIcon(volume) {
+                if (audio.muted) {
+                    volumeIcon.textContent = '🔇';
+                } else if (volume > 0.7) {
+                    volumeIcon.textContent = '🔊';
+                } else if (volume > 0) {
+                    volumeIcon.textContent = '🔉';
+                } else {
+                    volumeIcon.textContent = '🔇';
+                }
+            }
+
+            // 时间格式化
+            function formatTime(seconds) {
+                const minutes = Math.floor(seconds / 60);
+                const secs = Math.floor(seconds % 60);
+                return `${minutes}:${secs < 10 ? '0' + secs : secs}`;
+            }
+
+            // 暴露音频对象以便外部控制
+            panel.audioElement = audio;
+            
+            // 尝试自动播放
+            audio.play().then(() => {
+                playBtn.innerHTML = '⏸';
+            }).catch(err => console.error('自动播放失败：', err));
         }
 
         // 关闭所有其他预览面板并暂停播放
@@ -341,8 +506,11 @@
                 // 检查是否是当前点击项的预览面板
                 if (!currentParent.contains(preview)) {
                     // 暂停音频播放
-                    const audio = preview.querySelector('audio');
-                    if (audio) audio.pause();
+                    if (preview.audioElement) {
+                        preview.audioElement.pause();
+                        const playBtn = preview.querySelector('.play-btn');
+                        if (playBtn) playBtn.innerHTML = '▶';
+                    }
                     
                     // 隐藏预览面板
                     preview.style.display = 'none';
@@ -356,10 +524,12 @@
             panel.className = 'preview-panel';
             panel.style.display = 'block';
 
-            // 关键修改：使用列表中的歌手和歌名作为下载文件名
-            const downloadFileName = `${song.singer} - ${song.name}.mp3`;
+            // 从URL提取文件格式
+            const fileFormat = getFileFormatFromUrl(detailData.url);
+            // 使用列表中的歌手和歌名 + 正确的文件格式作为下载文件名
+            const downloadFileName = `${song.singer} - ${song.name}.${fileFormat}`;
 
-            // 预览面板HTML结构
+            // 预览面板HTML结构（带自定义音频控件）
             panel.innerHTML = `
                 <div class="preview-header">
                     <img src="${detailData.cover}" alt="歌曲封面" class="cover-img">
@@ -367,10 +537,26 @@
                         <div class="info-item"><span class="info-label">歌曲名：</span>${detailData.name}</div>
                         <div class="info-item"><span class="info-label">歌手：</span>${detailData.singer}</div>
                         <div class="info-item"><span class="info-label">音质：</span>${detailData.quality}</div>
+                        <div class="info-item"><span class="info-label">格式：</span>${fileFormat.toUpperCase()}</div>
                     </div>
                 </div>
-                <div class="audio-control">
-                    <audio controls src="${detailData.url}">您的浏览器不支持音频播放
+                <div class="audio-player">
+                    <div class="audio-controls">
+                        <button class="play-btn">▶</button>
+                        <div class="progress-container">
+                            <div class="progress-bar">
+                                <div class="progress-fill"></div>
+                            </div>
+                            <div class="time-display">
+                                <span class="current-time">0:00</span>
+                                <span class="duration">0:00</span>
+                            </div>
+                        </div>
+                        <div class="volume-control">
+                            <span class="volume-icon">🔊</span>
+                            <input type="range" class="volume-slider" min="0" max="1" step="0.1" value="1">
+                        </div>
+                    </div>
                 </div>
                 <button class="download-btn" data-url="${detailData.url}" data-filename="${downloadFileName}">下载歌曲</button>
             `;
@@ -391,7 +577,7 @@
             // 创建隐藏的a标签实现下载
             const a = document.createElement('a');
             a.href = url;
-            a.download = filename; // 使用列表中的歌手和歌名
+            a.download = filename; // 使用正确的文件名和格式
             a.style.display = 'none';
             document.body.appendChild(a);
             a.click();
