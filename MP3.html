@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MP3搜索工具</title>
+    <title>歌曲搜索工具</title>
     <style>
         * {
             margin: 0;
@@ -22,7 +22,6 @@
             color: #333;
             transition: all 0.3s ease;
         }
-        /* 搜索历史样式 */
         .history-section {
             margin-bottom: 20px;
         }
@@ -48,10 +47,38 @@
         .history-tag:hover {
             background-color: #e0e3e8;
         }
+        /* 随便听听样式 */
+        .random-listening {
+            margin: 15px 0 25px;
+        }
+        .random-title {
+            font-size: 15px;
+            color: #666;
+            margin-bottom: 10px;
+        }
+        .random-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .random-tag {
+            padding: 6px 14px;
+            background-color: #f0f7ff;
+            border: 1px solid #e1f0fe;
+            border-radius: 4px;
+            font-size: 14px;
+            color: #007bff;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .random-tag:hover {
+            background-color: #e6f2ff;
+            border-color: #c9e7ff;
+        }
         .search-box {
             display: flex;
             gap: 10px;
-            margin-bottom: 30px;
+            margin-bottom: 5px;
         }
         #songInput {
             flex: 1;
@@ -75,6 +102,7 @@
         }
         .result-list {
             margin-bottom: 30px;
+            padding-top: 15px;
         }
         .song-item {
             padding: 12px;
@@ -124,7 +152,7 @@
         .audio-control {
             margin-bottom: 15px;
         }
-        #downloadBtn {
+        .download-btn {
             padding: 8px 16px;
             background-color: #28a745;
             color: white;
@@ -133,91 +161,83 @@
             cursor: pointer;
             font-size: 14px;
         }
-        #downloadBtn:hover {
+        .download-btn:hover {
             background-color: #218838;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <!-- 工具说明 -->
         <div class="intro" id="intro">
-            <h3>欢迎使用MP3搜索工具</h3>
-            <p>本工具支持全网歌曲搜索，可在线试听及下载</p>
+            <h3>欢迎使用歌曲搜索</h3>
+            <p>无损音质flac 可在线试听及下载，支持全网会员歌曲</p>
             <p>使用方法：在上方搜索框输入歌曲名，点击搜索按钮或按回车键即可</p>
             <p>示例：输入"晴天"、"海阔天空"等歌曲名进行搜索</p>
-            
-            <!-- 搜索历史区域 -->
             <div class="history-section">
                 <div class="history-title">搜索历史：</div>
                 <div class="history-tags" id="historyTags"></div>
             </div>
         </div>
-
-        <!-- 搜索框与按钮 -->
+        
         <div class="search-box">
             <input type="text" id="songInput" placeholder="请输入歌曲名...">
             <button id="searchBtn">搜索</button>
         </div>
-
-        <!-- 搜索结果列表 -->
+        
+        <!-- 随便听听快捷入口 -->
+        <div class="random-listening" id="randomListening">
+            <div class="random-title">随便听听：</div>
+            <div class="random-tags">
+                <span class="random-tag" data-query="周杰伦">周杰伦</span>
+                <span class="random-tag" data-query="孙燕姿">孙燕姿</span>
+                <span class="random-tag" data-query="林俊杰">林俊杰</span>
+                <span class="random-tag" data-query="邓紫棋">邓紫棋</span>
+                <span class="random-tag" data-query="热歌">热歌</span>
+                <span class="random-tag" data-query="影视">影视</span>
+               <span class="random-tag" data-query="DJ">DJ</span>
+                <span class="random-tag" data-query="经典">经典</span>
+            </div>
+        </div>
+        
         <div class="result-list" id="resultList"></div>
     </div>
 
     <script>
-        // 获取DOM元素
         const songInput = document.getElementById('songInput');
         const searchBtn = document.getElementById('searchBtn');
         const resultList = document.getElementById('resultList');
         const intro = document.getElementById('intro');
         const historyTags = document.getElementById('historyTags');
-        
-        // 最多显示的历史记录数量
+        const randomListening = document.getElementById('randomListening');
         const MAX_HISTORY_COUNT = 8;
 
-        // 初始化搜索历史
         function initSearchHistory() {
             renderHistoryTags();
         }
 
-        // 保存搜索历史
         function saveSearchHistory(keyword) {
             if (!keyword) return;
-            
-            // 从localStorage获取现有历史
             let history = JSON.parse(localStorage.getItem('searchHistory') || '[]');
-            
-            // 去重（如果已存在则移到最前）
             history = history.filter(item => item !== keyword);
-            // 添加新记录到最前
             history.unshift(keyword);
-            // 限制历史记录数量
             if (history.length > MAX_HISTORY_COUNT) {
                 history = history.slice(0, MAX_HISTORY_COUNT);
             }
-            
-            // 保存到localStorage
             localStorage.setItem('searchHistory', JSON.stringify(history));
-            // 重新渲染历史标签
             renderHistoryTags();
         }
 
-        // 渲染历史标签
         function renderHistoryTags() {
             const history = JSON.parse(localStorage.getItem('searchHistory') || '[]');
             historyTags.innerHTML = '';
-            
             if (history.length === 0) {
                 historyTags.innerHTML = '<span style="color:#999; font-size:14px;">暂无搜索历史</span>';
                 return;
             }
-            
-            // 创建历史标签
             history.forEach(keyword => {
                 const tag = document.createElement('span');
                 tag.className = 'history-tag';
                 tag.textContent = keyword;
-                // 点击历史标签直接搜索
                 tag.addEventListener('click', () => {
                     songInput.value = keyword;
                     searchSongs();
@@ -226,14 +246,20 @@
             });
         }
 
-        // 搜索按钮点击事件
+        // 随便听听标签点击事件
+        document.querySelectorAll('.random-tag').forEach(tag => {
+            tag.addEventListener('click', () => {
+                const query = tag.dataset.query;
+                songInput.value = query; // 同步到搜索框
+                searchSongs(); // 执行搜索
+            });
+        });
+
         searchBtn.addEventListener('click', searchSongs);
-        // 回车键触发搜索
         songInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') searchSongs();
         });
 
-        // 搜索歌曲函数
         async function searchSongs() {
             const songName = songInput.value.trim();
             if (!songName) {
@@ -241,27 +267,22 @@
                 return;
             }
 
-            // 保存搜索历史
+            // 保存搜索历史（不再隐藏标题说明和随便听听）
             saveSearchHistory(songName);
-            // 隐藏欢迎信息
-            intro.style.display = 'none';
 
             try {
-                // 构建搜索接口URL（编码歌曲名）
+                // 使用统一的API链接格式
                 const encodeSongName = encodeURIComponent(songName);
                 const searchUrl = `https://api.suol.cc/v1/yy_sq.php?type=qq&msg=${encodeSongName}`;
                 
-                // 请求歌曲列表数据
                 const response = await fetch(searchUrl);
                 const data = await response.json();
 
-                // 验证数据格式
                 if (data.code !== 200 || !Array.isArray(data.list)) {
                     alert('搜索失败，请重试');
                     return;
                 }
 
-                // 渲染歌曲列表
                 renderSongList(data.list, songName);
             } catch (error) {
                 console.error('搜索错误：', error);
@@ -269,61 +290,37 @@
             }
         }
 
-        // 渲染歌曲列表
         function renderSongList(songList, songName) {
-            // 清空原有列表
-            resultList.innerHTML = '';
-
-            // 遍历列表生成DOM
+            resultList.innerHTML = ''; // 清空现有列表，直接在下方显示新结果
             songList.forEach((song, index) => {
                 const songItem = document.createElement('div');
                 songItem.className = 'song-item';
-
-                // 构建歌曲详情链接（n从1开始）
                 const n = index + 1;
                 const encodeSongName = encodeURIComponent(songName);
                 const detailUrl = `https://api.suol.cc/v1/yy_sq.php?type=qq&msg=${encodeSongName}&n=${n}`;
-
-                // 歌曲名+歌手链接
                 const songLink = document.createElement('a');
                 songLink.className = 'song-link';
-                songLink.href = 'javascript:;'; // 阻止默认跳转
+                songLink.href = 'javascript:;';
                 songLink.textContent = `${song.name} - ${song.singer}`;
-                
-                // 绑定链接点击事件（加载歌曲详情）
                 songLink.addEventListener('click', () => loadSongDetail(detailUrl, song, songItem));
-
-                // 组装DOM
                 songItem.appendChild(songLink);
                 resultList.appendChild(songItem);
             });
         }
 
-        // 加载歌曲详情（预览、试听、下载）
         async function loadSongDetail(detailUrl, song, parentItem) {
-            // 关闭所有其他预览面板并暂停播放
             closeAllOtherPreviews(parentItem);
-
             try {
-                // 请求歌曲详情数据
                 const response = await fetch(detailUrl);
                 const data = await response.json();
-
-                // 验证数据格式
                 if (data.code !== 200 || !data.url || !data.cover) {
                     alert('获取歌曲详情失败');
                     return;
                 }
-
-                // 移除当前项已有预览面板
                 const oldPreview = parentItem.querySelector('.preview-panel');
                 if (oldPreview) oldPreview.remove();
-
-                // 创建预览面板（使用列表中的歌手和歌名）
                 const previewPanel = createPreviewPanel(data, song);
                 parentItem.appendChild(previewPanel);
-
-                // 自动播放音频
                 const audio = previewPanel.querySelector('audio');
                 if (audio) audio.play().catch(err => console.error('自动播放失败：', err));
             } catch (error) {
@@ -332,34 +329,34 @@
             }
         }
 
-        // 关闭所有其他预览面板并暂停播放
         function closeAllOtherPreviews(currentParent) {
-            // 获取所有预览面板
             const allPreviews = document.querySelectorAll('.preview-panel');
-            
             allPreviews.forEach(preview => {
-                // 检查是否是当前点击项的预览面板
                 if (!currentParent.contains(preview)) {
-                    // 暂停音频播放
                     const audio = preview.querySelector('audio');
                     if (audio) audio.pause();
-                    
-                    // 隐藏预览面板
                     preview.style.display = 'none';
                 }
             });
         }
 
-        // 创建预览面板DOM（使用列表中的歌手和歌名）
         function createPreviewPanel(detailData, song) {
             const panel = document.createElement('div');
             panel.className = 'preview-panel';
             panel.style.display = 'block';
 
-            // 关键修改：使用列表中的歌手和歌名作为下载文件名
-            const downloadFileName = `${song.singer} - ${song.name}.mp3`;
+            // 提取音频格式
+            const urlParts = detailData.url.split('.');
+            let fileFormat = 'mp3';
+            if (urlParts.length >= 2) {
+                const lastPart = urlParts[urlParts.length - 1].split('?')[0];
+                if (['mp3', 'flac'].includes(lastPart.toLowerCase())) {
+                    fileFormat = lastPart.toLowerCase();
+                }
+            }
 
-            // 预览面板HTML结构
+            const downloadFileName = `${song.singer} - ${song.name}.${fileFormat}`;
+
             panel.innerHTML = `
                 <div class="preview-header">
                     <img src="${detailData.cover}" alt="歌曲封面" class="cover-img">
@@ -375,7 +372,6 @@
                 <button class="download-btn" data-url="${detailData.url}" data-filename="${downloadFileName}">下载歌曲</button>
             `;
 
-            // 绑定下载按钮事件
             const downloadBtn = panel.querySelector('.download-btn');
             downloadBtn.addEventListener('click', () => {
                 const url = downloadBtn.dataset.url;
@@ -386,19 +382,16 @@
             return panel;
         }
 
-        // 下载歌曲函数
         function downloadSong(url, filename) {
-            // 创建隐藏的a标签实现下载
             const a = document.createElement('a');
             a.href = url;
-            a.download = filename; // 使用列表中的歌手和歌名
+            a.download = filename;
             a.style.display = 'none';
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
         }
 
-        // 初始化页面
         initSearchHistory();
     </script>
 </body>
