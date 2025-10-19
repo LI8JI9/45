@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MP3搜索工具</title>
+    <!-- 引入Plyr播放器样式 -->
+    <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css">
     <style>
         * {
             margin: 0;
@@ -120,68 +122,8 @@
             font-weight: bold;
             color: #666;
         }
-        /* 自定义音频控件样式 */
-        .audio-player {
+        .audio-control {
             margin-bottom: 15px;
-            background-color: #fff;
-            border-radius: 8px;
-            padding: 12px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .audio-controls {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-        .play-btn {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background-color: #007bff;
-            color: white;
-            border: none;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            font-size: 16px;
-        }
-        .progress-container {
-            flex: 1;
-        }
-        .progress-bar {
-            width: 100%;
-            height: 4px;
-            background-color: #eee;
-            border-radius: 2px;
-            cursor: pointer;
-            position: relative;
-        }
-        .progress-fill {
-            height: 100%;
-            background-color: #007bff;
-            border-radius: 2px;
-            width: 0%;
-        }
-        .time-display {
-            display: flex;
-            justify-content: space-between;
-            font-size: 12px;
-            color: #666;
-            margin-top: 5px;
-        }
-        .volume-control {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-        .volume-icon {
-            color: #666;
-        }
-        .volume-slider {
-            width: 60px;
-            height: 4px;
-            cursor: pointer;
         }
         .download-btn {
             padding: 8px 16px;
@@ -194,6 +136,11 @@
         }
         .download-btn:hover {
             background-color: #218838;
+        }
+        /* Plyr播放器样式调整 */
+        .plyr {
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
     </style>
 </head>
@@ -223,6 +170,8 @@
         <div class="result-list" id="resultList"></div>
     </div>
 
+    <!-- 引入Plyr播放器脚本 -->
+    <script src="https://cdn.plyr.io/3.7.8/plyr.js"></script>
     <script>
         // 获取DOM元素
         const songInput = document.getElementById('songInput');
@@ -233,6 +182,8 @@
         
         // 最多显示的历史记录数量
         const MAX_HISTORY_COUNT = 8;
+        // 存储当前Plyr播放器实例
+        let currentPlyr = null;
 
         // 初始化搜索历史
         function initSearchHistory() {
@@ -243,21 +194,16 @@
         function saveSearchHistory(keyword) {
             if (!keyword) return;
             
-            // 从localStorage获取现有历史
             let history = JSON.parse(localStorage.getItem('searchHistory') || '[]');
-            
-            // 去重（如果已存在则移到最前）
+            // 去重并置顶新记录
             history = history.filter(item => item !== keyword);
-            // 添加新记录到最前
             history.unshift(keyword);
-            // 限制历史记录数量
+            // 限制历史数量
             if (history.length > MAX_HISTORY_COUNT) {
                 history = history.slice(0, MAX_HISTORY_COUNT);
             }
             
-            // 保存到localStorage
             localStorage.setItem('searchHistory', JSON.stringify(history));
-            // 重新渲染历史标签
             renderHistoryTags();
         }
 
@@ -271,12 +217,10 @@
                 return;
             }
             
-            // 创建历史标签
             history.forEach(keyword => {
                 const tag = document.createElement('span');
                 tag.className = 'history-tag';
                 tag.textContent = keyword;
-                // 点击历史标签直接搜索
                 tag.addEventListener('click', () => {
                     songInput.value = keyword;
                     searchSongs();
@@ -284,13 +228,6 @@
                 historyTags.appendChild(tag);
             });
         }
-
-        // 搜索按钮点击事件
-        searchBtn.addEventListener('click', searchSongs);
-        // 回车键触发搜索
-        songInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') searchSongs();
-        });
 
         // 搜索歌曲函数
         async function searchSongs() {
@@ -300,27 +237,21 @@
                 return;
             }
 
-            // 保存搜索历史
             saveSearchHistory(songName);
-            // 隐藏欢迎信息
             intro.style.display = 'none';
 
             try {
-                // 构建搜索接口URL（编码歌曲名）
                 const encodeSongName = encodeURIComponent(songName);
                 const searchUrl = `https://api.suol.cc/v1/yy_sq.php?type=qq&msg=${encodeSongName}`;
                 
-                // 请求歌曲列表数据
                 const response = await fetch(searchUrl);
                 const data = await response.json();
 
-                // 验证数据格式
                 if (data.code !== 200 || !Array.isArray(data.list)) {
                     alert('搜索失败，请重试');
                     return;
                 }
 
-                // 渲染歌曲列表
                 renderSongList(data.list, songName);
             } catch (error) {
                 console.error('搜索错误：', error);
@@ -330,71 +261,59 @@
 
         // 渲染歌曲列表
         function renderSongList(songList, songName) {
-            // 清空原有列表
             resultList.innerHTML = '';
 
-            // 遍历列表生成DOM
             songList.forEach((song, index) => {
                 const songItem = document.createElement('div');
                 songItem.className = 'song-item';
+                songItem.dataset.songName = song.name;
+                songItem.dataset.singer = song.singer;
 
-                // 构建歌曲详情链接（n从1开始）
                 const n = index + 1;
                 const encodeSongName = encodeURIComponent(songName);
                 const detailUrl = `https://api.suol.cc/v1/yy_sq.php?type=qq&msg=${encodeSongName}&n=${n}`;
 
-                // 歌曲名+歌手链接
                 const songLink = document.createElement('a');
                 songLink.className = 'song-link';
-                songLink.href = 'javascript:;'; // 阻止默认跳转
+                songLink.href = 'javascript:;';
                 songLink.textContent = `${song.name} - ${song.singer}`;
-                
-                // 绑定链接点击事件（加载歌曲详情）
-                songLink.addEventListener('click', () => loadSongDetail(detailUrl, song, songItem));
+                songLink.addEventListener('click', () => loadSongDetail(detailUrl, songItem));
 
-                // 组装DOM
                 songItem.appendChild(songLink);
                 resultList.appendChild(songItem);
             });
         }
 
-        // 从URL中提取文件格式
-        function getFileFormatFromUrl(url) {
-            // 匹配URL中的文件扩展名（如.mp3, .flac等）
-            const match = url.match(/\.([a-zA-Z0-9]+)(\?|$)/);
-            if (match && match[1]) {
-                return match[1].toLowerCase();
-            }
-            // 默认返回mp3
-            return 'mp3';
-        }
-
-        // 加载歌曲详情（预览、试听、下载）
-        async function loadSongDetail(detailUrl, song, parentItem) {
-            // 关闭所有其他预览面板并暂停播放
+        // 加载歌曲详情
+        async function loadSongDetail(detailUrl, parentItem) {
+            // 关闭所有其他预览和播放器
             closeAllOtherPreviews(parentItem);
 
             try {
-                // 请求歌曲详情数据
                 const response = await fetch(detailUrl);
                 const data = await response.json();
 
-                // 验证数据格式
                 if (data.code !== 200 || !data.url || !data.cover) {
                     alert('获取歌曲详情失败');
                     return;
                 }
 
-                // 移除当前项已有预览面板
+                // 1. 自动识别文件格式
+                const fileExtension = getFileExtensionFromUrl(data.url);
+                const singer = parentItem.dataset.singer;
+                const songName = parentItem.dataset.songName;
+                const downloadFileName = `${singer} - ${songName}.${fileExtension}`;
+
+                // 2. 移除当前项旧预览
                 const oldPreview = parentItem.querySelector('.preview-panel');
                 if (oldPreview) oldPreview.remove();
 
-                // 创建预览面板（使用列表中的歌手和歌名）
-                const previewPanel = createPreviewPanel(data, song);
+                // 3. 创建新预览面板（集成Plyr）
+                const previewPanel = createPreviewPanel(data, downloadFileName);
                 parentItem.appendChild(previewPanel);
 
-                // 初始化自定义音频播放器
-                initAudioPlayer(previewPanel, data.url);
+                // 4. 初始化Plyr播放器
+                initPlyrPlayer(previewPanel.querySelector('.plyr'), data.url);
 
             } catch (error) {
                 console.error('加载详情错误：', error);
@@ -402,134 +321,35 @@
             }
         }
 
-        // 初始化自定义音频播放器
-        function initAudioPlayer(panel, audioUrl) {
-            const audio = new Audio(audioUrl);
-            const playBtn = panel.querySelector('.play-btn');
-            const progressBar = panel.querySelector('.progress-bar');
-            const progressFill = panel.querySelector('.progress-fill');
-            const currentTimeEl = panel.querySelector('.current-time');
-            const durationEl = panel.querySelector('.duration');
-            const volumeSlider = panel.querySelector('.volume-slider');
-            const volumeIcon = panel.querySelector('.volume-icon');
-
-            // 播放/暂停切换
-            playBtn.addEventListener('click', () => {
-                if (audio.paused) {
-                    audio.play().then(() => {
-                        playBtn.innerHTML = '⏸';
-                    }).catch(err => console.error('播放失败：', err));
-                } else {
-                    audio.pause();
-                    playBtn.innerHTML = '▶';
-                }
-            });
-
-            // 进度更新
-            audio.addEventListener('timeupdate', () => {
-                const percent = (audio.currentTime / audio.duration) * 100;
-                progressFill.style.width = `${percent}%`;
-                
-                // 更新时间显示
-                currentTimeEl.textContent = formatTime(audio.currentTime);
-                if (!isNaN(audio.duration)) {
-                    durationEl.textContent = formatTime(audio.duration);
-                }
-            });
-
-            // 加载完成获取时长
-            audio.addEventListener('loadedmetadata', () => {
-                durationEl.textContent = formatTime(audio.duration);
-            });
-
-            // 点击进度条跳转
-            progressBar.addEventListener('click', (e) => {
-                const rect = progressBar.getBoundingClientRect();
-                const pos = (e.clientX - rect.left) / rect.width;
-                audio.currentTime = pos * audio.duration;
-            });
-
-            // 音量控制
-            volumeSlider.addEventListener('input', () => {
-                audio.volume = volumeSlider.value;
-                updateVolumeIcon(audio.volume);
-            });
-
-            // 静音切换
-            volumeIcon.addEventListener('click', () => {
-                audio.muted = !audio.muted;
-                volumeIcon.textContent = audio.muted ? '🔇' : '🔊';
-            });
-
-            // 播放结束重置
-            audio.addEventListener('ended', () => {
-                playBtn.innerHTML = '▶';
-                progressFill.style.width = '0%';
-                audio.currentTime = 0;
-            });
-
-            // 更新音量图标
-            function updateVolumeIcon(volume) {
-                if (audio.muted) {
-                    volumeIcon.textContent = '🔇';
-                } else if (volume > 0.7) {
-                    volumeIcon.textContent = '🔊';
-                } else if (volume > 0) {
-                    volumeIcon.textContent = '🔉';
-                } else {
-                    volumeIcon.textContent = '🔇';
-                }
-            }
-
-            // 时间格式化
-            function formatTime(seconds) {
-                const minutes = Math.floor(seconds / 60);
-                const secs = Math.floor(seconds % 60);
-                return `${minutes}:${secs < 10 ? '0' + secs : secs}`;
-            }
-
-            // 暴露音频对象以便外部控制
-            panel.audioElement = audio;
-            
-            // 尝试自动播放
-            audio.play().then(() => {
-                playBtn.innerHTML = '⏸';
-            }).catch(err => console.error('自动播放失败：', err));
+        // 从URL提取文件格式
+        function getFileExtensionFromUrl(url) {
+            const urlWithoutParams = url.split('?')[0];
+            const match = urlWithoutParams.match(/\.([a-zA-Z0-9]+)$/);
+            return match ? match[1].toLowerCase() : 'mp3';
         }
 
-        // 关闭所有其他预览面板并暂停播放
+        // 关闭所有其他预览和播放器
         function closeAllOtherPreviews(currentParent) {
-            // 获取所有预览面板
             const allPreviews = document.querySelectorAll('.preview-panel');
             
             allPreviews.forEach(preview => {
-                // 检查是否是当前点击项的预览面板
                 if (!currentParent.contains(preview)) {
-                    // 暂停音频播放
-                    if (preview.audioElement) {
-                        preview.audioElement.pause();
-                        const playBtn = preview.querySelector('.play-btn');
-                        if (playBtn) playBtn.innerHTML = '▶';
+                    // 销毁Plyr实例
+                    if (preview.querySelector('.plyr') && currentPlyr) {
+                        currentPlyr.destroy();
+                        currentPlyr = null;
                     }
-                    
-                    // 隐藏预览面板
                     preview.style.display = 'none';
                 }
             });
         }
 
-        // 创建预览面板DOM（使用列表中的歌手和歌名）
-        function createPreviewPanel(detailData, song) {
+        // 创建预览面板（集成Plyr）
+        function createPreviewPanel(detailData, downloadFileName) {
             const panel = document.createElement('div');
             panel.className = 'preview-panel';
             panel.style.display = 'block';
 
-            // 从URL提取文件格式
-            const fileFormat = getFileFormatFromUrl(detailData.url);
-            // 使用列表中的歌手和歌名 + 正确的文件格式作为下载文件名
-            const downloadFileName = `${song.singer} - ${song.name}.${fileFormat}`;
-
-            // 预览面板HTML结构（带自定义音频控件）
             panel.innerHTML = `
                 <div class="preview-header">
                     <img src="${detailData.cover}" alt="歌曲封面" class="cover-img">
@@ -537,31 +357,20 @@
                         <div class="info-item"><span class="info-label">歌曲名：</span>${detailData.name}</div>
                         <div class="info-item"><span class="info-label">歌手：</span>${detailData.singer}</div>
                         <div class="info-item"><span class="info-label">音质：</span>${detailData.quality}</div>
-                        <div class="info-item"><span class="info-label">格式：</span>${fileFormat.toUpperCase()}</div>
+                        <div class="info-item"><span class="info-label">格式：</span>${downloadFileName.split('.').pop().toUpperCase()}</div>
                     </div>
                 </div>
-                <div class="audio-player">
-                    <div class="audio-controls">
-                        <button class="play-btn">▶</button>
-                        <div class="progress-container">
-                            <div class="progress-bar">
-                                <div class="progress-fill"></div>
-                            </div>
-                            <div class="time-display">
-                                <span class="current-time">0:00</span>
-                                <span class="duration">0:00</span>
-                            </div>
-                        </div>
-                        <div class="volume-control">
-                            <span class="volume-icon">🔊</span>
-                            <input type="range" class="volume-slider" min="0" max="1" step="0.1" value="1">
-                        </div>
-                    </div>
+                <!-- Plyr播放器 -->
+                <div class="audio-control">
+                    <audio class="plyr" controls>
+                        <source src="" type="audio/mpeg">
+                        您的浏览器不支持音频播放
+                    </audio>
                 </div>
                 <button class="download-btn" data-url="${detailData.url}" data-filename="${downloadFileName}">下载歌曲</button>
             `;
 
-            // 绑定下载按钮事件
+            // 绑定下载事件
             const downloadBtn = panel.querySelector('.download-btn');
             downloadBtn.addEventListener('click', () => {
                 const url = downloadBtn.dataset.url;
@@ -572,17 +381,58 @@
             return panel;
         }
 
+        // 初始化Plyr播放器
+        function initPlyrPlayer(audioElement, audioUrl) {
+            // 销毁旧实例
+            if (currentPlyr) {
+                currentPlyr.destroy();
+            }
+
+            // 设置音频源
+            audioElement.querySelector('source').src = audioUrl;
+            audioElement.load();
+
+            // 初始化Plyr
+            currentPlyr = new Plyr(audioElement, {
+                autoplay: true,  // 自动播放
+                controls: [      // 自定义控制按钮
+                    'play-large', 
+                    'play', 
+                    'progress', 
+                    'current-time', 
+                    'duration', 
+                    'mute', 
+                    'volume', 
+                    'download'
+                ],
+                tooltips: {
+                    controls: true
+                },
+                volume: 1        // 默认音量
+            });
+
+            // 尝试自动播放（处理浏览器限制）
+            currentPlyr.play().catch(err => {
+                console.log('自动播放受浏览器限制，请手动点击播放按钮');
+            });
+        }
+
         // 下载歌曲函数
         function downloadSong(url, filename) {
-            // 创建隐藏的a标签实现下载
             const a = document.createElement('a');
             a.href = url;
-            a.download = filename; // 使用正确的文件名和格式
+            a.download = filename;
             a.style.display = 'none';
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
         }
+
+        // 绑定搜索事件
+        searchBtn.addEventListener('click', searchSongs);
+        songInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') searchSongs();
+        });
 
         // 初始化页面
         initSearchHistory();
