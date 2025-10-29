@@ -73,6 +73,10 @@
         .player-info {
             flex: 1;
         }
+        /* 音乐播放区域 */
+        .music-player {
+            transition: all 0.3s ease;
+        }
         .cover-container {
             text-align: center;
             margin-bottom: 20px;
@@ -144,6 +148,7 @@
             display: flex;
             justify-content: center;
             gap: 10px;
+            margin-bottom: 20px;
         }
         .download-btn, .mv-btn {
             padding: 8px 16px;
@@ -166,15 +171,47 @@
         .mv-btn:hover {
             background-color: #e0a800;
         }
+        
+        /* MV播放区域 */
+        .mv-player-container {
+            display: none; /* 默认隐藏 */
+            width: 100%;
+            background-color: #000;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+        .mv-video {
+            width: 100%;
+            display: block;
+        }
+        .mv-controls {
+            padding: 10px;
+            background-color: rgba(0,0,0,0.7);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .mv-title {
+            color: white;
+            font-size: 16px;
+        }
+        .close-mv {
+            color: white;
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+        }
+        
         .playlist-container {
             flex: 1;
-            max-height: 400px; /* 适当减小高度，避免移动端溢出 */
+            max-height: 400px;
             overflow-y: auto;
-            border-top: 1px solid #eee; /* 移动端使用上边框 */
+            border-top: 1px solid #eee;
             padding-top: 20px;
             padding-left: 0;
         }
-        /* 桌面端播放列表样式 */
         @media (min-width: 768px) {
             .playlist-container {
                 border-top: none;
@@ -199,9 +236,9 @@
             transition: all 0.2s;
             display: flex;
             align-items: center;
-            white-space: nowrap; /* 防止文字换行 */
-            overflow: hidden; /* 超出部分隐藏 */
-            text-overflow: ellipsis; /* 超出部分显示省略号 */
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
         .song-item:hover {
             background-color: #f5f7fa;
@@ -215,7 +252,7 @@
             text-align: center;
             margin-right: 10px;
             color: #666;
-            flex-shrink: 0; /* 防止序号被压缩 */
+            flex-shrink: 0;
         }
         .song-item.active .song-index {
             color: #007bff;
@@ -223,7 +260,7 @@
         }
         .song-info {
             flex: 1;
-            overflow: hidden; /* 超出部分隐藏 */
+            overflow: hidden;
         }
         .song-name {
             font-size: 14px;
@@ -308,37 +345,6 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
-        .mv-modal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0,0,0,0.8);
-            display: none;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-        }
-        .mv-content {
-            max-width: 90%;
-            max-height: 90%;
-            position: relative;
-        }
-        .close-mv {
-            position: absolute;
-            top: -40px;
-            right: 0;
-            color: white;
-            background: none;
-            border: none;
-            font-size: 24px;
-            cursor: pointer;
-        }
-        .mv-video {
-            width: 100%;
-            max-height: 80vh;
-        }
     </style>
 </head>
 <body>
@@ -351,7 +357,6 @@
                     <button id="searchBtn">搜索</button>
                 </div>
                 
-                <!-- 随便听听快捷入口 -->
                 <div class="random-listening" id="randomListening">
                     <div class="random-title">随便听听：</div>
                     <div class="random-tags">
@@ -366,7 +371,6 @@
                     </div>
                 </div>
                 
-                <!-- 搜索历史 -->
                 <div class="history-section">
                     <div class="history-title">搜索历史：</div>
                     <div class="history-tags" id="historyTags"></div>
@@ -375,18 +379,34 @@
             
             <div class="player-body">
                 <div class="player-info">
-                    <div class="cover-container">
-                        <img src="https://picsum.photos/400/400?music" alt="歌曲封面" class="cover-img" id="coverImg">
+                    <!-- MV播放区域 -->
+                    <div class="mv-player-container" id="mvPlayerContainer">
+                        <video controls class="mv-video" id="mvPlayer">
+                            您的浏览器不支持视频播放
+                        </video>
+                        <div class="mv-controls">
+                            <div class="mv-title" id="mvTitle">MV播放中</div>
+                            <button class="close-mv" id="closeMvBtn">&times;</button>
+                        </div>
                     </div>
-                    <div class="song-meta">
-                        <div class="song-title" id="songTitle">未播放歌曲</div>
-                        <div class="song-artist" id="songArtist">未知艺术家</div>
-                        <div class="song-quality" id="songQuality">--</div>
+                    
+                    <!-- 音乐播放区域 -->
+                    <div class="music-player" id="musicPlayer">
+                        <div class="cover-container">
+                            <img src="https://picsum.photos/400/400?music" alt="歌曲封面" class="cover-img" id="coverImg">
+                        </div>
+                        <div class="song-meta">
+                            <div class="song-title" id="songTitle">未播放歌曲</div>
+                            <div class="song-artist" id="songArtist">未知艺术家</div>
+                            <div class="song-quality" id="songQuality">--</div>
+                        </div>
+                        <audio controls class="audio-control" id="audioPlayer">
+                            您的浏览器不支持音频播放
+                        </audio>
                     </div>
-                    <audio controls class="audio-control" id="audioPlayer">
-                        您的浏览器不支持音频播放
-                    </audio>
-                    <div class="player-controls">
+                    
+                    <!-- 控制按钮区域（上一曲/下一曲等） -->
+                    <div class="player-controls" id="mainControls">
                         <button class="control-btn prev-btn" id="prevBtn">◀</button>
                         <button class="control-btn play-btn" id="playBtn">▶</button>
                         <button class="control-btn next-btn" id="nextBtn">▶▶</button>
@@ -402,16 +422,6 @@
                     <div id="playlist"></div>
                 </div>
             </div>
-        </div>
-    </div>
-    
-    <!-- MV播放模态框 -->
-    <div class="mv-modal" id="mvModal">
-        <div class="mv-content">
-            <button class="close-mv" id="closeMvBtn">&times;</button>
-            <video controls class="mv-video" id="mvPlayer">
-                您的浏览器不支持视频播放
-            </video>
         </div>
     </div>
 
@@ -431,9 +441,12 @@
         const nextBtn = document.getElementById('nextBtn');
         const downloadBtn = document.getElementById('downloadBtn');
         const mvBtn = document.getElementById('mvBtn');
-        const mvModal = document.getElementById('mvModal');
+        const mvPlayerContainer = document.getElementById('mvPlayerContainer');
         const mvPlayer = document.getElementById('mvPlayer');
+        const mvTitle = document.getElementById('mvTitle');
         const closeMvBtn = document.getElementById('closeMvBtn');
+        const musicPlayer = document.getElementById('musicPlayer');
+        const mainControls = document.getElementById('mainControls');
         
         // 全局变量
         const MAX_HISTORY_COUNT = 8;
@@ -446,7 +459,6 @@
         function init() {
             initSearchHistory();
             setupEventListeners();
-            // 为歌手名添加点击事件
             songArtist.addEventListener('click', searchArtist);
         }
 
@@ -526,9 +538,6 @@
             // MV相关事件
             mvBtn.addEventListener('click', playCurrentMV);
             closeMvBtn.addEventListener('click', closeMV);
-            mvModal.addEventListener('click', (e) => {
-                if (e.target === mvModal) closeMV();
-            });
         }
 
         // 搜索歌曲
@@ -539,12 +548,10 @@
                 return;
             }
 
-            // 保存搜索历史
             saveSearchHistory(songName);
 
             try {
                 showLoading();
-                // 使用API搜索歌曲
                 const encodeSongName = encodeURIComponent(songName);
                 const searchUrl = `https://api.suol.cc/v1/yy_sq.php?type=qq&msg=${encodeSongName}`;
                 
@@ -561,7 +568,6 @@
                 renderPlaylist();
                 hideLoading();
                 
-                // 自动播放第一首
                 if (currentSongList.length > 0) {
                     playSong(0);
                 }
@@ -599,7 +605,6 @@
             
             try {
                 showLoading();
-                // 获取歌曲详情
                 const encodeSongName = encodeURIComponent(songInput.value.trim());
                 const detailUrl = `https://api.suol.cc/v1/yy_sq.php?type=qq&msg=${encodeSongName}&n=${index + 1}`;
                 
@@ -612,7 +617,6 @@
                     return;
                 }
 
-                // 更新播放器信息
                 currentSongDetail = data;
                 audioPlayer.src = data.url;
                 coverImg.src = data.cover;
@@ -621,11 +625,9 @@
                 songQuality.textContent = `音质: ${data.quality}`;
                 document.title = `${data.singer} - ${data.name}`;
                 
-                // 播放歌曲
                 await audioPlayer.play();
                 playBtn.textContent = '❚❚';
                 
-                // 更新播放列表选中状态
                 renderPlaylist();
                 hideLoading();
             } catch (error) {
@@ -666,7 +668,6 @@
         function downloadCurrentSong() {
             if (!currentSongDetail) return;
             
-            // 提取音频格式
             const urlParts = currentSongDetail.url.split('.');
             let fileFormat = 'mp3';
             if (urlParts.length >= 2) {
@@ -687,7 +688,7 @@
             document.body.removeChild(a);
         }
 
-        // 播放当前歌曲的MV - 播放时自动暂停歌曲
+        // 播放当前歌曲的MV
         async function playCurrentMV() {
             if (!currentSongDetail) return;
             
@@ -698,9 +699,13 @@
             }
             
             try {
+                // 显示MV播放器，隐藏音乐播放相关控件
+                mvPlayerContainer.style.display = 'block';
+                musicPlayer.style.display = 'none'; // 隐藏封面和歌曲信息
+                
                 // 显示加载状态
                 mvPlayer.src = '';
-                mvModal.style.display = 'flex';
+                mvTitle.textContent = `加载中: ${currentSongDetail.name} - ${currentSongDetail.singer}`;
                 mvPlayer.innerHTML = `
                     <div class="loading">
                         <div class="loading-spinner"></div>
@@ -725,23 +730,28 @@
                         // 获取最高质量的视频URL
                         const highestQualityUrl = mvDetail.url[mvDetail.url.length - 1];
                         mvPlayer.src = highestQualityUrl;
+                        mvTitle.textContent = `${currentSongDetail.name} - ${currentSongDetail.singer} (MV)`;
                         await mvPlayer.play();
                     } else {
                         mvPlayer.innerHTML = '<p style="color: white; text-align: center; padding: 20px;">未找到该歌曲的MV资源</p>';
+                        mvTitle.textContent = '播放失败';
                     }
                 } else {
                     mvPlayer.innerHTML = '<p style="color: white; text-align: center; padding: 20px;">未找到相关MV资源</p>';
+                    mvTitle.textContent = '未找到资源';
                 }
             } catch (err) {
                 console.error('MV搜索失败:', err);
                 mvPlayer.innerHTML = '<p style="color: white; text-align: center; padding: 20px;">MV搜索失败，请检查网络连接</p>';
+                mvTitle.textContent = '加载失败';
             }
         }
 
         // 关闭MV播放
         function closeMV() {
-            mvModal.style.display = 'none';
+            mvPlayerContainer.style.display = 'none';
             mvPlayer.pause();
+            musicPlayer.style.display = 'block'; // 显示音乐播放相关控件
         }
 
         // 显示加载状态
